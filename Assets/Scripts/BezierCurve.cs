@@ -25,18 +25,40 @@ public class BezierCurve
         };
     }
 
-    // add new curve segment at mouse position
-    public void AddSegment(Vector2 newPosition)
+    public bool IsClosed
     {
-        // two anchor points
-        points.Add(points[points.Count - 1] * 2 - points[points.Count - 2]);
-        points.Add((newPosition + points[points.Count - 1]) * .5f);
-        // control points at new position
-        points.Add(newPosition);
-
-        if (autoSetControlPoints)
+        get
         {
-            AutoSetAffectedControlPoints(points.Count - 1);
+            return isClosed;
+        }
+        set
+        {
+            if (isClosed != value)
+            {
+                isClosed = value;
+
+                if (isClosed)
+                {
+                    // add 2 anchor points to open curve
+                    points.Add(points[points.Count - 1] * 2 - points[points.Count - 2]); // add opposite of last anchor points
+                    points.Add(points[0] * 2 - points[1]); // add opposite of first control points
+
+                    if (autoSetControlPoints)
+                    {
+                        AutoSetAnchorControlPoints(0);
+                        AutoSetAnchorControlPoints(points.Count - 3);
+                    }
+                }
+                else
+                {
+                    // remove extra anchor points when open a closed curve
+                    points.RemoveRange(points.Count - 2, 2);
+                    if (autoSetControlPoints)
+                    {
+                        AutoSetStartAndEndControls();
+                    }
+                }
+            }
         }
     }
 
@@ -83,6 +105,36 @@ public class BezierCurve
         }
     }
 
+    // add new curve segment at mouse position
+    public void AddSegment(Vector2 newPosition)
+    {
+        // two anchor points
+        points.Add(points[points.Count - 1] * 2 - points[points.Count - 2]);
+        points.Add((newPosition + points[points.Count - 1]) * .5f);
+        // control points at new position
+        points.Add(newPosition);
+
+        if (autoSetControlPoints)
+        {
+            AutoSetAffectedControlPoints(points.Count - 1);
+        }
+    }
+
+
+    public void SplitSegment(Vector2 anchorPosition, int segmentIndex)
+    {
+        points.InsertRange(segmentIndex*3 + 2, new Vector2[] {Vector2.zero, anchorPosition, Vector2.zero});  
+        if (autoSetControlPoints)
+        {
+            AutoSetAffectedControlPoints(segmentIndex * 3 + 3);
+        }
+        else
+        {
+            AutoSetAnchorControlPoints(segmentIndex * 3 + 3);
+        }
+    }
+
+
     public Vector2[] GetPointsInSegment(int index)
     {
         return new Vector2[]
@@ -92,6 +144,30 @@ public class BezierCurve
             points[index*3 + 2],
             points[LoopIndex(index*3 + 3)],  // in case last segment on closed curve
         };
+    }
+
+    public void DeleteSegment(int anchorIndex)
+    {
+
+        if (NumberOfSegments > 2 || !isClosed && NumberOfSegments > 1)
+        {
+            if (anchorIndex == 0)
+            {
+                if (isClosed)
+                {
+                    points[points.Count - 1] = points[2];
+                }
+                points.RemoveRange(0, 3);
+            }
+            else if (anchorIndex == points.Count - 1 && !isClosed)
+            {
+                points.RemoveRange(anchorIndex - 2, 3);
+            }
+            else
+            {
+                points.RemoveRange(anchorIndex - 1, 3);
+            }
+        }
     }
 
     public void MovePoint(int index, Vector2 newPosition)
@@ -132,34 +208,6 @@ public class BezierCurve
                         points[LoopIndex(correspodingControlIndex)] = points[LoopIndex(anchorIndex)] + direction * distance;
                     }
                 }
-            }
-        }
-    }
-
-
-    public void ToggleClose()
-    {
-        isClosed = !isClosed;
-
-        if (isClosed)
-        {
-            // add 2 anchor points to open curve
-            points.Add(points[points.Count - 1] * 2 - points[points.Count - 2]); // add opposite of last anchor points
-            points.Add(points[0] * 2 - points[1]); // add opposite of first control points
-
-            if (autoSetControlPoints)
-            {
-                AutoSetAnchorControlPoints(0);
-                AutoSetAnchorControlPoints(points.Count - 3);
-            }
-        }
-        else
-        {
-            // remove extra anchor points when open a closed curve
-            points.RemoveRange(points.Count - 2, 2);
-            if (autoSetControlPoints)
-            {
-                AutoSetStartAndEndControls();
             }
         }
     }
