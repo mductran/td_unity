@@ -7,6 +7,38 @@ public class CurveEditor : Editor
     CurveCreator curveCreator;
     BezierCurve bezierCurve;
 
+    public override void OnInspectorGUI() 
+    {
+        base.OnInspectorGUI();
+
+        EditorGUI.BeginChangeCheck();
+        if (GUILayout.Button("Create new")) 
+        {
+            Undo.RecordObject(curveCreator, "Create new");
+            curveCreator.CreateCurve();
+            bezierCurve = curveCreator.bezierCurve;
+        }
+
+        if (GUILayout.Button("Toggle closed")) 
+        {
+            Undo.RecordObject(curveCreator, "Toggle close");
+            bezierCurve.ToggleClose();
+        }
+
+        bool autoSetControlPoints = GUILayout.Toggle(bezierCurve.AutoSetControlPoints, "Auto Set Control Points");
+        if (autoSetControlPoints != bezierCurve.AutoSetControlPoints) 
+        {
+            Undo.RecordObject(curveCreator , "Toggle Auto Set Control");
+            bezierCurve.AutoSetControlPoints = autoSetControlPoints;
+        }
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            SceneView.RepaintAll();
+        }
+
+    }
+
     void OnEnable()
     {
         // curveCreator = target as CurveCreator;
