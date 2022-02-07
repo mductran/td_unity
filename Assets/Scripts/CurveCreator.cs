@@ -9,4 +9,9 @@ public class CurveCreator : MonoBehaviour
     {
         bezierCurve = new BezierCurve(transform.position);
     }
+
+    void Reset() 
+    {
+        CreateCurve();
+    }
 }

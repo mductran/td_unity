@@ -12,6 +12,7 @@ public class BezierCurve
 
     [SerializeField, HideInInspector]
     bool autoSetControlPoints;
+    bool displayControlPoints;
 
     // generate a cubic curve
     public BezierCurve(Vector2 centre)
@@ -23,6 +24,21 @@ public class BezierCurve
             centre + Vector2.right + Vector2.down,
             centre + Vector2.right
         };
+    }
+
+    public bool DisplayControlPoints
+    {
+        get
+        {
+            return displayControlPoints;
+        }
+        set
+        {
+            if (displayControlPoints != value)
+            {
+                displayControlPoints = value;
+            }
+        }
     }
 
     public bool IsClosed
@@ -212,6 +228,44 @@ public class BezierCurve
         }
     }
 
+    public Vector2[] CalculateEvenlySpacedPoint(float spacing, float resolution=1)
+    {
+        List<Vector2> evenlySpacedPoint = new List<Vector2>{};
+        evenlySpacedPoint.Add(points[0]);
+        Vector2 prevPoint = points[0];
+        float distanceSinceLastEvenPoint = 0f;
+
+        for (int i = 0; i < NumberOfSegments; i++) {
+            Vector2[] p = GetPointsInSegment(i);
+
+            float controlNetLenth = Vector2.Distance(p[0], p[1]) + Vector2.Distance(p[1], p[2]) + Vector2.Distance(p[2], p[3]);
+            float estimatedCurveLength = Vector2.Distance(p[0], p[3]) + controlNetLenth * .5f;
+
+            int divisions = Mathf.CeilToInt(estimatedCurveLength * resolution * 10);
+
+            float t = 0f;
+            
+            while (t <= 1f) 
+            {
+                t += 0.1f/divisions;
+                Vector2 pointOnCurve = BezierEquation.EvalCubic(p[0], p[1], p[2], p[3], t);
+                distanceSinceLastEvenPoint += Vector2.Distance(prevPoint, pointOnCurve);
+
+                while (distanceSinceLastEvenPoint >= spacing)
+                {
+                    float overshootDistance = distanceSinceLastEvenPoint - spacing;
+                    Vector2 newEvenlySpacedPoint = pointOnCurve + prevPoint - pointOnCurve.normalized * overshootDistance;
+                    evenlySpacedPoint.Add(newEvenlySpacedPoint);
+                    distanceSinceLastEvenPoint = overshootDistance;
+                    prevPoint = newEvenlySpacedPoint;
+                }
+                prevPoint = pointOnCurve;
+            }
+        }
+
+        return evenlySpacedPoint.ToArray();
+    }
+
     int LoopIndex(int i)
     {
         // + points.Count to handle negative i values
@@ -280,7 +334,7 @@ public class BezierCurve
 
     void AutoSetAffectedControlPoints(int updatedAnchorIndex)
     {
-        for (int i = updatedAnchorIndex - 3; i <= updatedAnchorIndex; i++)
+        for (int i = updatedAnchorIndex - 3; i <= updatedAnchorIndex + 3; i+=3)
         {
             if (i >= 0 && i < points.Count || isClosed)
             {
